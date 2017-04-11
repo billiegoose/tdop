@@ -22,15 +22,17 @@ class TokenStream {
     this.source = inputString
     this.cursor = 0
   }
+  [Symbol.iterator] () {
+    return this
+  }
   next () {
-    // gobble up whitespace
-    while (whitespace.includes(this._c)) {
-      this.cursor += 1
+    if (this.cursor >= this.source.length) {
+      return {done: true, value: {type: 'name', value: '(eof)'}}
     }
     // return next token
     let type = this._inferType()
     let value = this._next(type)
-    return {type, value}
+    return {done: false, value: {type, value}}
   }
   get _c () {
     return this.source[this.cursor]
@@ -51,6 +53,8 @@ class TokenStream {
     // Strings are probably the next easiest.
     if (quotes.includes(this._c)) return 'string'
     // OK I lied, strings were even easier than numbers.
+    // Let's make whitespace tokens. That way we can handle significant whitespace later on.
+    if (whitespace.includes(this._c)) return 'whitespace'
     // So now we have to determine whether something is an operator or a name.
     // I *could* do this by assuming operators are more punctuationy, but instead
     // lets do it on the assumption that...
@@ -66,7 +70,14 @@ class TokenStream {
     return 'name'
   }
   _next (type) {
-    if (type === 'number') {
+    if (type === 'whitespace') {
+      let value = ''
+      while (whitespace.includes(this._c)) {
+        value += this._c
+        this.cursor += 1
+      }
+      return value
+    } else if (type === 'number') {
       let value = ''
       while (number.includes(this._c)) {
         value += this._c
@@ -96,7 +107,6 @@ class TokenStream {
         value += this._c
         this.cursor += 1
       }
-      if (value === '') return "(eof)"
       return value
     }
   }
